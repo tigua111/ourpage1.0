@@ -23,6 +23,28 @@ function formatDate(dateKey) {
   return `${parts[0]}/${parts[1]}/${parts[2]}`;
 }
 
+// 🎯 新增：將 Supabase 的時間戳記轉化為帶有「時:分」的親切格式
+function formatPrecisionTime(createdAtString, dateKey) {
+  if (!createdAtString) return formatDate(dateKey);
+  try {
+    const dateObj = new Date(createdAtString);
+    const timePart = dateObj.toLocaleTimeString('zh-TW', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    // 如果是今天的信，就顯示「今天 22:30」，否則顯示「2026/06/17 22:30」
+    if (dateKey === todayKey) {
+      return `今天 ${timePart}`;
+    } else {
+      return `${formatDate(dateKey)} ${timePart}`;
+    }
+  } catch (e) {
+    return formatDate(dateKey);
+  }
+}
+
 function clearTimers() {
   if (roomTimer) window.clearTimeout(roomTimer);
   if (reminderTimer) window.clearTimeout(reminderTimer);
@@ -102,7 +124,6 @@ async function loginWithGoogle() {
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      // 🎯 這裡已經精確幫你改造成你的正式線上網址，後面也確實帶上 index.html 了！
       redirectTo: "https://tigua111.github.io/ourpage1.0/index.html" 
     }
   });
@@ -738,10 +759,11 @@ function showComputerDashboard() {
     .filter(l => l.sender_id === state.user.id)
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
+  // 🎯 這裡修正：呼叫 formatPrecisionTime 帶入精準發信時間
   const historyHtml = mySentHistory.map(l => `
     <div class="archive-item" style="margin-bottom: 8px; background: #fffdf6; border: 2px solid var(--line);">
       <div style="padding: 4px;">
-        <div class="archive-date" style="font-size: 0.9rem;">${formatDate(l.date_key)}</div>
+        <div class="archive-date" style="font-size: 0.9rem;">${formatPrecisionTime(l.created_at, l.date_key)}</div>
         <p style="margin-top: 4px; font-size: 0.95rem; line-height: 1.4; word-break: break-all;">${escapeHtml(l.text)}</p>
       </div>
     </div>
@@ -877,7 +899,7 @@ function showEnvelope(letterId, processedLetters) {
         <div class="panel-header">
           <div>
             <h2 id="envelopeTitle">新信</h2>
-            <p class="subtle">${formatDate(letter.date)}</p>
+            <p class="subtle">${formatPrecisionTime(letter.created_at, letter.date)}</p>
           </div>
           <button class="icon-button" id="closeEnvelope" type="button" title="關閉">×</button>
         </div>
@@ -1144,12 +1166,13 @@ function showToast(message) {
   window.setTimeout(() => toast.remove(), 1800);
 }
 
+// 🎯 這裡修正：呼叫 formatPrecisionTime 顯示精確時間戳記
 function miniCard(letter) {
   const who = letter.direction === "incoming" ? "對方" : "我";
   return `
     <div class="mini-card">
       <p>${escapeHtml(letter.text)}</p>
-      <div class="mini-card-meta">${who} · ${formatDate(letter.date)}</div>
+      <div class="mini-card-meta">${who} · ${formatPrecisionTime(letter.created_at, letter.date)}</div>
     </div>
   `;
 }
